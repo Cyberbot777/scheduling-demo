@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Provider {
+  id           Int          @id @default(autoincrement())
+  name         String
+  specialty    String
+  availability Json
+  assignments  Assignment[]
+}
+
+model Family {
+  id          Int        @id @default(autoincrement())
+  name        String
+  consistency Boolean    // true = prefers same provider
+  requests    Request[]
+}
+
+model Request {
+  id         Int         @id @default(autoincrement())
+  familyId   Int
+  family     Family      @relation(fields: [familyId], references: [id])
+  careType   String
+  startTime  DateTime
+  endTime    DateTime
+  assignment Assignment?
+}
+
+model Assignment {
+  id         Int       @id @default(autoincrement())
+  requestId  Int       @unique
+  request    Request   @relation(fields: [requestId], references: [id])
+  providerId Int
+  provider   Provider  @relation(fields: [providerId], references: [id])
+}
