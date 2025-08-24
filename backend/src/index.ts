@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import OpenAI from "openai";
 import { PrismaClient } from "@prisma/client";
 
 const app = express();
@@ -32,3 +33,175 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🚀 API running on http://localhost:${PORT}`);
 });
+
+// Create a new care request
+app.post("/requests", async (req, res) => {
+  try {
+    const { familyId, careType, startTime, endTime } = req.body;
+
+    if (!familyId || !careType || !startTime || !endTime) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const newRequest = await prisma.request.create({
+      data: {
+        familyId,
+        careType,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+      },
+    });
+
+    res.status(201).json(newRequest);
+  } catch (error) {
+    console.error("Error creating request:", error);
+    res.status(500).json({ error: "Failed to create request" });
+  }
+});
+
+// Get all care requests
+app.get("/requests", async (req, res) => {
+  try {
+    const requests = await prisma.request.findMany({
+      include: {
+        family: true, 
+        assignment: true 
+      }
+    });
+    res.json(requests);
+  } catch (error) {
+    console.error("Error fetching requests:", error);
+    res.status(500).json({ error: "Failed to fetch requests" });
+  }
+});
+
+// Assign a provider to a request
+app.post("/assignments", async (req, res) => {
+  try {
+    const { requestId, providerId } = req.body;
+
+    if (!requestId || !providerId) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // make sure request exists
+    const request = await prisma.request.findUnique({ where: { id: requestId } });
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    // make sure provider exists
+    const provider = await prisma.provider.findUnique({ where: { id: providerId } });
+    if (!provider) {
+      return res.status(404).json({ error: "Provider not found" });
+    }
+
+    // create assignment
+    const assignment = await prisma.assignment.create({
+      data: {
+        requestId,
+        providerId
+      }
+    });
+
+    res.status(201).json(assignment);
+  } catch (error) {
+    console.error("Error creating assignment:", error);
+    res.status(500).json({ error: "Failed to create assignment" });
+  }
+});
+
+// Get all assignments
+app.get("/assignments", async (req, res) => {
+  try {
+    const assignments = await prisma.assignment.findMany({
+      include: {
+        provider: true,
+        request: {
+          include: { family: true }
+        }
+      }
+    });
+    res.json(assignments);
+  } catch (error) {
+    console.error("Error fetching assignments:", error);
+    res.status(500).json({ error: "Failed to fetch assignments" });
+  }
+});
+
+// create OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// AI Suggest route
+app.post("/ai-suggest", async (req, res) => {
+  try {
+    const { requestId } = req.body;
+
+    if (!requestId) {
+      return res.status(400).json({ error: "Missing requestId" });
+    }
+
+    // fetch request + family
+    const request = await prisma.request.findUnique({
+      where: { id: requestId },
+      include: { family: true }
+    });
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    // fetch providers
+    const providers = await prisma.provider.findMany();
+
+    const prompt = `
+You are a scheduling assistant. A family has made a care request. 
+Pick the SINGLE best provider based on family consistency preference, specialty, and availability. 
+Return ONLY valid JSON in this format:
+
+{
+  "providerId": <number>,
+  "name": "<string>",
+  "reasoning": "<string>"
+}
+
+Request:
+- Care Type: ${request.careType}
+- Time: ${request.startTime.toISOString()} to ${request.endTime.toISOString()}
+- Family: ${request.family.name} (consistency: ${request.family.consistency})
+
+Providers:
+${providers.map(p => `- id:${p.id}, ${p.name} (${p.specialty}), availability: ${JSON.stringify(p.availability)}`).join("\n")}
+    `;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a precise scheduling assistant. Always respond with valid JSON." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.2
+    });
+
+    const content = completion.choices[0].message?.content;
+
+    let suggestion;
+    try {
+      suggestion = JSON.parse(content || "{}");
+    } catch (e) {
+      return res.status(500).json({ error: "AI returned invalid JSON", raw: content });
+    }
+
+    res.json({
+      requestId,
+      suggestedProvider: suggestion
+    });
+  } catch (error) {
+    console.error("AI Suggestion error:", error);
+    res.status(500).json({ error: "Failed to generate AI suggestion" });
+  }
+});
+
+
+
