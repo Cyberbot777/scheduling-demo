@@ -308,17 +308,48 @@ yuzicare-scheduler/
 │   └── Dockerfile
 ├── frontend/
 │   ├── app/
-│   │   ├── page.tsx
+│   │   ├── components/           # Reusable React components
+│   │   │   ├── Dashboard.tsx     # Dashboard with stats and quick actions
+│   │   │   ├── ProvidersList.tsx # Providers listing and management
+│   │   │   ├── RequestsList.tsx  # Requests CRUD with modals
+│   │   │   ├── AssignmentsList.tsx # Assignments management
+│   │   │   └── NewRequestForm.tsx # New request form with AI
 │   │   ├── providers/
+│   │   │   └── page.tsx          # Simple wrapper for ProvidersList
 │   │   ├── requests/
+│   │   │   ├── page.tsx          # Simple wrapper for RequestsList
+│   │   │   └── new/
+│   │   │       └── page.tsx      # Simple wrapper for NewRequestForm
 │   │   ├── assignments/
-│   │   └── layout.tsx
+│   │   │   └── page.tsx          # Simple wrapper for AssignmentsList
+│   │   ├── page.tsx              # Simple wrapper for Dashboard
+│   │   ├── layout.tsx            # Global layout and navigation
+│   │   ├── globals.css           # Global styles
+│   │   └── favicon.ico
 │   ├── package.json
 │   └── Dockerfile
 ├── docker-compose.yml
 ├── example.env
 └── README.md
 ```
+
+### Architecture Benefits
+
+**Component-Based Organization**
+- **Clear Separation**: Each component has a single, well-defined responsibility
+- **Maintainability**: Easy to locate and modify specific functionality
+- **Reusability**: Components can be imported and reused across the application
+- **Testing**: Each component can be tested independently
+
+**Next.js App Router Compliance**
+- **Page Files**: Simple wrapper components that import and render the main logic
+- **Routing**: Maintains Next.js 15 App Router conventions
+- **Performance**: Optimized builds with proper code splitting
+
+**Professional Structure**
+- **Descriptive Names**: Components have clear, purpose-indicating names
+- **Logical Grouping**: Related functionality is organized together
+- **Scalability**: Structure supports future growth and feature additions
 
 ---
 

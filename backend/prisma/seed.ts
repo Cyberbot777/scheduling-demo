@@ -68,6 +68,37 @@ async function main() {
     }
   });
 
+  const emma = await prisma.provider.create({
+    data: {
+      name: "Emma Rodriguez",
+      specialty: "Doula",
+      availability: { 
+        monday: ["10-18"], 
+        tuesday: ["9-17"], 
+        wednesday: ["10-18"], 
+        thursday: ["9-17"],
+        friday: ["10-18"],
+        saturday: ["9-17"]
+      }
+    }
+  });
+
+  const frank = await prisma.provider.create({
+    data: {
+      name: "Frank Thompson",
+      specialty: "Neonatal Nurse",
+      availability: { 
+        monday: ["7-15"], 
+        tuesday: ["15-23"], 
+        wednesday: ["7-15"], 
+        thursday: ["15-23"],
+        friday: ["7-15"],
+        saturday: ["9-17"],
+        sunday: ["9-17"]
+      }
+    }
+  });
+
   // Families
   const family1 = await prisma.family.create({
     data: {
@@ -98,7 +129,7 @@ async function main() {
   });
 
   console.log("Seed data created successfully!");
-  console.log("Providers:", [alice.name, bob.name, carol.name, david.name]);
+  console.log("Providers:", [alice.name, bob.name, carol.name, david.name, emma.name, frank.name]);
   console.log("Families:", [family1.name, family2.name, family3.name, family4.name]);
 }
 
