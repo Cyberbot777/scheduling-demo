@@ -2,20 +2,77 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { Trash2, UserPlus } from "lucide-react";
 
 export default function RequestsPage() {
   const [requests, setRequests] = useState<any[]>([]);
+  const [providers, setProviders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAssignModal, setShowAssignModal] = useState<number | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:4000/requests")
-      .then(res => res.json())
-      .then(data => {
-        setRequests(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch("http://localhost:4000/requests").then(res => res.json()),
+      fetch("http://localhost:4000/providers").then(res => res.json())
+    ]).then(([requestsData, providersData]) => {
+      setRequests(requestsData);
+      setProviders(providersData);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
+
+  const deleteRequest = async (requestId: number) => {
+    if (!confirm("Are you sure you want to delete this request?")) return;
+    
+    try {
+      const response = await fetch(`http://localhost:4000/requests/${requestId}`, {
+        method: "DELETE"
+      });
+      
+      if (response.ok) {
+        setRequests(requests.filter(r => r.id !== requestId));
+        alert("Request deleted successfully!");
+      } else {
+        alert("Failed to delete request");
+      }
+    } catch (error) {
+      alert("Error deleting request");
+    }
+  };
+
+  const assignProvider = async (requestId: number) => {
+    if (!selectedProvider) {
+      alert("Please select a provider");
+      return;
+    }
+    
+    try {
+      const response = await fetch(`http://localhost:4000/requests/${requestId}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerId: parseInt(selectedProvider) })
+      });
+      
+      if (response.ok) {
+        const assignment = await response.json();
+        // Update the requests list with the new assignment
+        setRequests(requests.map(r => 
+          r.id === requestId 
+            ? { ...r, assignment: assignment }
+            : r
+        ));
+        setShowAssignModal(null);
+        setSelectedProvider("");
+        alert("Provider assigned successfully!");
+      } else {
+        const error = await response.json();
+        alert(`Failed to assign provider: ${error.error}`);
+      }
+    } catch (error) {
+      alert("Error assigning provider");
+    }
+  };
 
   if (loading) {
     return (
@@ -79,16 +136,25 @@ export default function RequestsPage() {
                 </div>
               </div>
               
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-400">Start Time:</p>
-                  <p className="text-white">{new Date(request.startTime).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">End Time:</p>
-                  <p className="text-white">{new Date(request.endTime).toLocaleString()}</p>
-                </div>
-              </div>
+                             <div className="grid md:grid-cols-2 gap-4 text-sm">
+                 <div>
+                   <p className="text-gray-400">Start Time:</p>
+                   <p className="text-white">{new Date(request.startTime).toLocaleDateString()} {new Date(request.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <div>
+                     <p className="text-gray-400">End Time:</p>
+                     <p className="text-white">{new Date(request.endTime).toLocaleDateString()} {new Date(request.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                   </div>
+                   <button
+                     onClick={() => deleteRequest(request.id)}
+                     className="text-white hover:text-red-500 transition-colors p-2 rounded-full"
+                     title="Delete Request"
+                   >
+                     <Trash2 size={16} />
+                   </button>
+                 </div>
+               </div>
               
               {request.assignment && request.assignment.provider && (
                 <div className="mt-4 p-3 bg-gray-700 rounded-lg">
@@ -96,6 +162,19 @@ export default function RequestsPage() {
                   <p className="text-white font-medium">{request.assignment.provider.name}</p>
                 </div>
               )}
+              
+                             {/* Action Buttons */}
+               <div className="mt-4 flex gap-2">
+                 {!request.assignment && (
+                   <button
+                     onClick={() => setShowAssignModal(request.id)}
+                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors flex items-center gap-1"
+                   >
+                     <UserPlus size={16} />
+                     Assign Provider
+                   </button>
+                 )}
+               </div>
             </motion.div>
           ))}
           
@@ -115,6 +194,44 @@ export default function RequestsPage() {
             </motion.div>
           )}
         </div>
+        
+        {/* Assignment Modal */}
+        {showAssignModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 p-6 rounded-xl max-w-md w-full mx-4">
+              <h3 className="text-xl font-semibold text-white mb-4">Assign Provider</h3>
+              <select
+                value={selectedProvider}
+                onChange={(e) => setSelectedProvider(e.target.value)}
+                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
+              >
+                <option value="">Select a provider</option>
+                {providers.map(provider => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.name} ({provider.specialty})
+                  </option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => assignProvider(showAssignModal)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                >
+                  Assign
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAssignModal(null);
+                    setSelectedProvider("");
+                  }}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>
   );

@@ -65,13 +65,51 @@ app.get("/requests", async (req, res) => {
     const requests = await prisma.request.findMany({
       include: {
         family: true, 
-        assignment: true 
+        assignment: {
+          include: {
+            provider: true
+          }
+        }
       }
     });
     res.json(requests);
   } catch (error) {
     console.error("Error fetching requests:", error);
     res.status(500).json({ error: "Failed to fetch requests" });
+  }
+});
+
+// Delete a care request
+app.delete("/requests/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if request exists
+    const request = await prisma.request.findUnique({
+      where: { id: parseInt(id) },
+      include: { assignment: true }
+    });
+    
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+    
+    // If request has an assignment, delete it first
+    if (request.assignment) {
+      await prisma.assignment.delete({
+        where: { requestId: parseInt(id) }
+      });
+    }
+    
+    // Delete the request
+    await prisma.request.delete({
+      where: { id: parseInt(id) }
+    });
+    
+    res.json({ message: "Request deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting request:", error);
+    res.status(500).json({ error: "Failed to delete request" });
   }
 });
 
@@ -171,6 +209,119 @@ app.get("/assignments", async (req, res) => {
   } catch (error) {
     console.error("Error fetching assignments:", error);
     res.status(500).json({ error: "Failed to fetch assignments" });
+  }
+});
+
+// Delete an assignment
+app.delete("/assignments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if assignment exists
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: parseInt(id) }
+    });
+    
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+    
+    // Delete the assignment
+    await prisma.assignment.delete({
+      where: { id: parseInt(id) }
+    });
+    
+    res.json({ message: "Assignment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting assignment:", error);
+    res.status(500).json({ error: "Failed to delete assignment" });
+  }
+});
+
+// Manual assignment endpoint (assign provider to request)
+app.post("/requests/:id/assign", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { providerId } = req.body;
+    
+    if (!providerId) {
+      return res.status(400).json({ error: "Provider ID is required" });
+    }
+    
+    // Check if request exists
+    const request = await prisma.request.findUnique({
+      where: { id: parseInt(id) },
+      include: { family: true }
+    });
+    
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+    
+    // Check if provider exists
+    const provider = await prisma.provider.findUnique({
+      where: { id: providerId }
+    });
+    
+    if (!provider) {
+      return res.status(404).json({ error: "Provider not found" });
+    }
+    
+    // Check for existing assignment
+    const existingAssignment = await prisma.assignment.findUnique({
+      where: { requestId: parseInt(id) }
+    });
+    
+    if (existingAssignment) {
+      return res.status(400).json({ error: "Request already has an assignment" });
+    }
+    
+    // Check for scheduling conflicts
+    const conflictingAssignment = await prisma.assignment.findFirst({
+      where: {
+        providerId,
+        request: {
+          OR: [
+            {
+              startTime: { lte: request.endTime },
+              endTime: { gte: request.startTime }
+            }
+          ]
+        }
+      },
+      include: {
+        request: true
+      }
+    });
+    
+    if (conflictingAssignment) {
+      return res.status(409).json({ 
+        error: "Provider has a scheduling conflict",
+        conflict: {
+          existingRequest: conflictingAssignment.request.careType,
+          existingTime: `${conflictingAssignment.request.startTime} - ${conflictingAssignment.request.endTime}`
+        }
+      });
+    }
+    
+    // Create assignment
+    const assignment = await prisma.assignment.create({
+      data: {
+        requestId: parseInt(id),
+        providerId
+      },
+      include: {
+        provider: true,
+        request: {
+          include: { family: true }
+        }
+      }
+    });
+    
+    res.status(201).json(assignment);
+  } catch (error) {
+    console.error("Error creating manual assignment:", error);
+    res.status(500).json({ error: "Failed to create assignment" });
   }
 });
 

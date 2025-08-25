@@ -1,10 +1,30 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Trash2 } from "lucide-react";
 
 export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const deleteAssignment = async (assignmentId: number) => {
+    if (!confirm("Are you sure you want to delete this assignment?")) return;
+    
+    try {
+      const response = await fetch(`http://localhost:4000/assignments/${assignmentId}`, {
+        method: "DELETE"
+      });
+      
+      if (response.ok) {
+        setAssignments(assignments.filter(a => a.id !== assignmentId));
+        alert("Assignment deleted successfully!");
+      } else {
+        alert("Failed to delete assignment");
+      }
+    } catch (error) {
+      alert("Error deleting assignment");
+    }
+  };
 
   useEffect(() => {
     fetch("http://localhost:4000/assignments")
@@ -74,18 +94,27 @@ export default function AssignmentsPage() {
                 </div>
               </div>
               
-              <div className="mt-4 pt-4 border-t border-gray-700">
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-400">Start Time:</p>
-                    <p className="text-white">{new Date(assignment.request.startTime).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">End Time:</p>
-                    <p className="text-white">{new Date(assignment.request.endTime).toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
+                             <div className="mt-4 pt-4 border-t border-gray-700">
+                 <div className="grid md:grid-cols-2 gap-4 text-sm">
+                   <div>
+                     <p className="text-gray-400">Start Time:</p>
+                     <p className="text-white">{new Date(assignment.request.startTime).toLocaleDateString()} {new Date(assignment.request.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <div>
+                       <p className="text-gray-400">End Time:</p>
+                       <p className="text-white">{new Date(assignment.request.endTime).toLocaleDateString()} {new Date(assignment.request.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                     </div>
+                                           <button
+                        onClick={() => deleteAssignment(assignment.id)}
+                        className="text-white hover:text-red-500 transition-colors p-2 rounded-full"
+                        title="Delete Assignment"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                   </div>
+                 </div>
+               </div>
             </motion.div>
           ))}
           
