@@ -290,6 +290,86 @@ app.get("/assignments", async (req, res) => {
   }
 });
 
+// Update an assignment (change provider)
+app.put("/assignments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { providerId } = req.body;
+    
+    if (!providerId) {
+      return res.status(400).json({ error: "Provider ID is required" });
+    }
+    
+    // Check if assignment exists
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        request: true,
+        provider: true
+      }
+    });
+    
+    if (!assignment) {
+      return res.status(404).json({ error: "Assignment not found" });
+    }
+    
+    // Check if new provider exists
+    const newProvider = await prisma.provider.findUnique({
+      where: { id: providerId }
+    });
+    
+    if (!newProvider) {
+      return res.status(404).json({ error: "Provider not found" });
+    }
+    
+    // Check for scheduling conflicts with the new provider
+    const conflictingAssignment = await prisma.assignment.findFirst({
+      where: {
+        id: { not: parseInt(id) }, // Exclude current assignment
+        providerId,
+        request: {
+          OR: [
+            {
+              startTime: { lte: assignment.request.endTime },
+              endTime: { gte: assignment.request.startTime }
+            }
+          ]
+        }
+      },
+      include: {
+        request: true
+      }
+    });
+    
+    if (conflictingAssignment) {
+      return res.status(409).json({ 
+        error: "New provider has a scheduling conflict",
+        conflict: {
+          existingRequest: conflictingAssignment.request.careType,
+          existingTime: `${conflictingAssignment.request.startTime} - ${conflictingAssignment.request.endTime}`
+        }
+      });
+    }
+    
+    // Update the assignment
+    const updatedAssignment = await prisma.assignment.update({
+      where: { id: parseInt(id) },
+      data: { providerId },
+      include: {
+        provider: true,
+        request: {
+          include: { family: true }
+        }
+      }
+    });
+    
+    res.json(updatedAssignment);
+  } catch (error) {
+    console.error("Error updating assignment:", error);
+    res.status(500).json({ error: "Failed to update assignment" });
+  }
+});
+
 // Delete an assignment
 app.delete("/assignments/:id", async (req, res) => {
   try {
