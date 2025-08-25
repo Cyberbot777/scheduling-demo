@@ -131,11 +131,68 @@ Example response:
 
 ---
 
-## Next Steps
+## Approach & Key Decisions
 
-- Add authentication for providers and coordinators
-- Extend AI to support multi-provider scheduling
-- Deployment to Vercel (frontend) + Render/Fly.io (backend)
+### Problem Analysis
+The assignment described a healthcare startup struggling with manual scheduling that led to:
+- 3-hour emergency response times
+- Double-booking providers
+- Inconsistent care for families who requested consistency
+
+### Solution Architecture
+
+**Backend (Express + Prisma + PostgreSQL)**
+- **Database Design**: Normalized schema with clear relationships between providers, families, requests, and assignments
+- **API Design**: RESTful endpoints with proper error handling and validation
+- **Business Logic**: 
+  - Conflict detection prevents double-booking
+  - Consistency preferences influence AI recommendations
+  - Assignment validation ensures data integrity
+
+**Frontend (Next.js + Tailwind + Framer Motion)**
+- **User Experience**: Dark theme with smooth animations for professional healthcare feel
+- **Navigation**: Dashboard overview with quick access to all major functions
+- **Forms**: Intuitive request creation with real-time AI suggestions
+
+**AI Integration (OpenAI GPT)**
+- **Context-Aware**: Considers family history, consistency preferences, and provider specialties
+- **Structured Output**: Returns JSON with reasoning for transparency
+- **Scalable**: Easy to extend with more sophisticated matching algorithms
+
+### Key Technical Decisions
+
+1. **Database Choice**: PostgreSQL for ACID compliance and complex queries needed for scheduling conflicts
+2. **ORM**: Prisma for type safety and easy migrations
+3. **API Structure**: RESTful design for simplicity and clear separation of concerns
+4. **Frontend Framework**: Next.js App Router for modern React patterns and good DX
+5. **Styling**: Tailwind CSS for rapid development and consistent design
+6. **AI Integration**: OpenAI GPT for natural language understanding of complex scheduling scenarios
+
+### Business Logic Implementation
+
+**Consistency Preference Logic**
+- Families marked as "consistency: true" get priority for providers they've worked with before
+- AI considers previous assignments when making recommendations
+- System tracks family-provider relationships over time
+
+**Conflict Detection**
+- Prevents same provider from being assigned overlapping times
+- Validates request times against provider availability
+- Returns detailed error messages for scheduling conflicts
+
+**Scalability Considerations**
+- Database indexes on time ranges for efficient conflict checking
+- Modular API design for easy feature additions
+- Docker containerization for consistent deployment
+
+### Future Enhancements
+
+- **Authentication**: Provider and family login systems
+- **Calendar Integration**: Google Calendar/iCal sync
+- **Payment Processing**: Stripe integration for bookings
+- **Advanced AI**: Multi-provider scheduling and availability optimization
+- **Mobile App**: React Native for providers and families
+- **Analytics**: Scheduling efficiency metrics and provider utilization
 
 ---
 

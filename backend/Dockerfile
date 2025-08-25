@@ -7,6 +7,8 @@ RUN npm install || true
 
 COPY . .
 
+RUN npx prisma generate
+
 EXPOSE 4000
 
 CMD ["npm", "run", "dev"]

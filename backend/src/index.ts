@@ -85,7 +85,10 @@ app.post("/assignments", async (req, res) => {
     }
 
     // make sure request exists
-    const request = await prisma.request.findUnique({ where: { id: requestId } });
+    const request = await prisma.request.findUnique({ 
+      where: { id: requestId },
+      include: { family: true }
+    });
     if (!request) {
       return res.status(404).json({ error: "Request not found" });
     }
@@ -96,11 +99,53 @@ app.post("/assignments", async (req, res) => {
       return res.status(404).json({ error: "Provider not found" });
     }
 
+    // Check for existing assignment
+    const existingAssignment = await prisma.assignment.findUnique({
+      where: { requestId }
+    });
+    if (existingAssignment) {
+      return res.status(400).json({ error: "Request already has an assignment" });
+    }
+
+    // Check for scheduling conflicts (same provider, overlapping times)
+    const conflictingAssignment = await prisma.assignment.findFirst({
+      where: {
+        providerId,
+        request: {
+          OR: [
+            {
+              startTime: { lte: request.endTime },
+              endTime: { gte: request.startTime }
+            }
+          ]
+        }
+      },
+      include: {
+        request: true
+      }
+    });
+
+    if (conflictingAssignment) {
+      return res.status(409).json({ 
+        error: "Provider has a scheduling conflict",
+        conflict: {
+          existingRequest: conflictingAssignment.request.careType,
+          existingTime: `${conflictingAssignment.request.startTime} - ${conflictingAssignment.request.endTime}`
+        }
+      });
+    }
+
     // create assignment
     const assignment = await prisma.assignment.create({
       data: {
         requestId,
         providerId
+      },
+      include: {
+        provider: true,
+        request: {
+          include: { family: true }
+        }
       }
     });
 
@@ -155,6 +200,19 @@ app.post("/ai-suggest", async (req, res) => {
     // fetch providers
     const providers = await prisma.provider.findMany();
 
+    // Get existing assignments for this family to check consistency
+    const familyAssignments = await prisma.assignment.findMany({
+      where: {
+        request: {
+          familyId: request.familyId
+        }
+      },
+      include: {
+        provider: true,
+        request: true
+      }
+    });
+
     const prompt = `
 You are a scheduling assistant. A family has made a care request. 
 Pick the SINGLE best provider based on family consistency preference, specialty, and availability. 
@@ -171,8 +229,15 @@ Request:
 - Time: ${request.startTime.toISOString()} to ${request.endTime.toISOString()}
 - Family: ${request.family.name} (consistency: ${request.family.consistency})
 
-Providers:
+${request.family.consistency && familyAssignments.length > 0 ? `
+Previous assignments for this family:
+${familyAssignments.map(a => `- ${a.provider.name} (${a.provider.specialty}) for ${a.request.careType}`).join("\n")}
+` : ""}
+
+Available Providers:
 ${providers.map(p => `- id:${p.id}, ${p.name} (${p.specialty}), availability: ${JSON.stringify(p.availability)}`).join("\n")}
+
+${request.family.consistency ? "IMPORTANT: This family prefers consistency. Prioritize providers they've worked with before if available and suitable." : "This family is flexible with different providers."}
     `;
 
     const completion = await openai.chat.completions.create({
