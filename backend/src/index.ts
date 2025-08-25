@@ -79,6 +79,84 @@ app.get("/requests", async (req, res) => {
   }
 });
 
+// Update a care request
+app.put("/requests/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { careType, startTime, endTime, familyId } = req.body;
+    
+    // Check if request exists
+    const request = await prisma.request.findUnique({
+      where: { id: parseInt(id) },
+      include: { assignment: true }
+    });
+    
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+    
+    // Validate required fields
+    if (!careType || !startTime || !endTime) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    // Check for scheduling conflicts if times are being changed
+    if (startTime !== request.startTime.toISOString() || endTime !== request.endTime.toISOString()) {
+      const conflictingAssignment = await prisma.assignment.findFirst({
+        where: {
+          requestId: { not: parseInt(id) }, // Exclude current request
+          providerId: request.assignment?.providerId,
+          request: {
+            OR: [
+              {
+                startTime: { lte: new Date(endTime) },
+                endTime: { gte: new Date(startTime) }
+              }
+            ]
+          }
+        },
+        include: {
+          request: true
+        }
+      });
+      
+      if (conflictingAssignment) {
+        return res.status(409).json({ 
+          error: "Time change creates a scheduling conflict",
+          conflict: {
+            existingRequest: conflictingAssignment.request.careType,
+            existingTime: `${conflictingAssignment.request.startTime} - ${conflictingAssignment.request.endTime}`
+          }
+        });
+      }
+    }
+    
+    // Update the request
+    const updatedRequest = await prisma.request.update({
+      where: { id: parseInt(id) },
+      data: {
+        careType,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        familyId: familyId || request.familyId
+      },
+      include: {
+        family: true,
+        assignment: {
+          include: {
+            provider: true
+          }
+        }
+      }
+    });
+    
+    res.json(updatedRequest);
+  } catch (error) {
+    console.error("Error updating request:", error);
+    res.status(500).json({ error: "Failed to update request" });
+  }
+});
+
 // Delete a care request
 app.delete("/requests/:id", async (req, res) => {
   try {

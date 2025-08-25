@@ -2,22 +2,32 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Trash2, UserPlus } from "lucide-react";
+import { Trash2, UserPlus, Edit3 } from "lucide-react";
 
 export default function RequestsPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [providers, setProviders] = useState<any[]>([]);
+  const [families, setFamilies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAssignModal, setShowAssignModal] = useState<number | null>(null);
   const [selectedProvider, setSelectedProvider] = useState("");
+  const [showEditModal, setShowEditModal] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    careType: "",
+    startTime: "",
+    endTime: "",
+    familyId: ""
+  });
 
   useEffect(() => {
     Promise.all([
       fetch("http://localhost:4000/requests").then(res => res.json()),
-      fetch("http://localhost:4000/providers").then(res => res.json())
-    ]).then(([requestsData, providersData]) => {
+      fetch("http://localhost:4000/providers").then(res => res.json()),
+      fetch("http://localhost:4000/families").then(res => res.json())
+    ]).then(([requestsData, providersData, familiesData]) => {
       setRequests(requestsData);
       setProviders(providersData);
+      setFamilies(familiesData);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -71,6 +81,45 @@ export default function RequestsPage() {
       }
     } catch (error) {
       alert("Error assigning provider");
+    }
+  };
+
+  const openEditModal = (request: any) => {
+    setEditForm({
+      careType: request.careType,
+      startTime: new Date(request.startTime).toISOString().slice(0, 16),
+      endTime: new Date(request.endTime).toISOString().slice(0, 16),
+      familyId: request.familyId.toString()
+    });
+    setShowEditModal(request.id);
+  };
+
+  const updateRequest = async () => {
+    if (!showEditModal) return;
+    
+    try {
+      const response = await fetch(`http://localhost:4000/requests/${showEditModal}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm)
+      });
+      
+      if (response.ok) {
+        const updatedRequest = await response.json();
+        setRequests(requests.map(r => 
+          r.id === showEditModal 
+            ? updatedRequest
+            : r
+        ));
+        setShowEditModal(null);
+        setEditForm({ careType: "", startTime: "", endTime: "", familyId: "" });
+        alert("Request updated successfully!");
+      } else {
+        const error = await response.json();
+        alert(`Failed to update request: ${error.error}`);
+      }
+    } catch (error) {
+      alert("Error updating request");
     }
   };
 
@@ -141,19 +190,28 @@ export default function RequestsPage() {
                    <p className="text-gray-400">Start Time:</p>
                    <p className="text-white">{new Date(request.startTime).toLocaleDateString()} {new Date(request.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                  </div>
-                 <div className="flex justify-between items-center">
-                   <div>
-                     <p className="text-gray-400">End Time:</p>
-                     <p className="text-white">{new Date(request.endTime).toLocaleDateString()} {new Date(request.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                   </div>
-                   <button
-                     onClick={() => deleteRequest(request.id)}
-                     className="text-white hover:text-red-500 transition-colors p-2 rounded-full"
-                     title="Delete Request"
-                   >
-                     <Trash2 size={16} />
-                   </button>
-                 </div>
+                                   <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-gray-400">End Time:</p>
+                      <p className="text-white">{new Date(request.endTime).toLocaleDateString()} {new Date(request.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => openEditModal(request)}
+                        className="text-white hover:text-blue-400 transition-colors p-2 rounded-full"
+                        title="Edit Request"
+                      >
+                        <Edit3 size={16} />
+                      </button>
+                      <button
+                        onClick={() => deleteRequest(request.id)}
+                        className="text-white hover:text-red-500 transition-colors p-2 rounded-full"
+                        title="Delete Request"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
                </div>
               
               {request.assignment && request.assignment.provider && (
@@ -195,43 +253,118 @@ export default function RequestsPage() {
           )}
         </div>
         
-        {/* Assignment Modal */}
-        {showAssignModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-xl max-w-md w-full mx-4">
-              <h3 className="text-xl font-semibold text-white mb-4">Assign Provider</h3>
-              <select
-                value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value)}
-                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
-              >
-                <option value="">Select a provider</option>
-                {providers.map(provider => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.name} ({provider.specialty})
-                  </option>
-                ))}
-              </select>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => assignProvider(showAssignModal)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
-                >
-                  Assign
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAssignModal(null);
-                    setSelectedProvider("");
-                  }}
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+                 {/* Assignment Modal */}
+         {showAssignModal && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+             <div className="bg-gray-800 p-6 rounded-xl max-w-md w-full mx-4">
+               <h3 className="text-xl font-semibold text-white mb-4">Assign Provider</h3>
+               <select
+                 value={selectedProvider}
+                 onChange={(e) => setSelectedProvider(e.target.value)}
+                 className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
+               >
+                 <option value="">Select a provider</option>
+                 {providers.map(provider => (
+                   <option key={provider.id} value={provider.id}>
+                     {provider.name} ({provider.specialty})
+                   </option>
+                 ))}
+               </select>
+               <div className="flex gap-2">
+                 <button
+                   onClick={() => assignProvider(showAssignModal)}
+                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                 >
+                   Assign
+                 </button>
+                 <button
+                   onClick={() => {
+                     setShowAssignModal(null);
+                     setSelectedProvider("");
+                   }}
+                   className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-colors"
+                 >
+                   Cancel
+                 </button>
+               </div>
+             </div>
+           </div>
+         )}
+
+         {/* Edit Request Modal */}
+         {showEditModal && (
+           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+             <div className="bg-gray-800 p-6 rounded-xl max-w-md w-full mx-4">
+               <h3 className="text-xl font-semibold text-white mb-4">Edit Request</h3>
+               
+               <div className="space-y-4">
+                 <div>
+                   <label className="block text-gray-300 text-sm mb-2">Care Type</label>
+                   <input
+                     type="text"
+                     value={editForm.careType}
+                     onChange={(e) => setEditForm({...editForm, careType: e.target.value})}
+                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                     placeholder="e.g., Lactation Consult"
+                   />
+                 </div>
+                 
+                 <div>
+                   <label className="block text-gray-300 text-sm mb-2">Family</label>
+                   <select
+                     value={editForm.familyId}
+                     onChange={(e) => setEditForm({...editForm, familyId: e.target.value})}
+                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                   >
+                     {families.map(family => (
+                       <option key={family.id} value={family.id}>
+                         {family.name} {family.consistency && "(Prefers consistency)"}
+                       </option>
+                     ))}
+                   </select>
+                 </div>
+                 
+                 <div>
+                   <label className="block text-gray-300 text-sm mb-2">Start Time</label>
+                   <input
+                     type="datetime-local"
+                     value={editForm.startTime}
+                     onChange={(e) => setEditForm({...editForm, startTime: e.target.value})}
+                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                   />
+                 </div>
+                 
+                 <div>
+                   <label className="block text-gray-300 text-sm mb-2">End Time</label>
+                   <input
+                     type="datetime-local"
+                     value={editForm.endTime}
+                     onChange={(e) => setEditForm({...editForm, endTime: e.target.value})}
+                     className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                   />
+                 </div>
+               </div>
+               
+               <div className="flex gap-2 mt-6">
+                 <button
+                   onClick={updateRequest}
+                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                 >
+                   Update
+                 </button>
+                 <button
+                   onClick={() => {
+                     setShowEditModal(null);
+                     setEditForm({ careType: "", startTime: "", endTime: "", familyId: "" });
+                   }}
+                   className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-colors"
+                 >
+                   Cancel
+                 </button>
+               </div>
+             </div>
+           </div>
+         )}
       </motion.div>
     </div>
   );
