@@ -48,6 +48,24 @@ app.get("/families", async (req, res) => {
   res.json(families);
 });
 
+// Dashboard stats endpoint
+app.get("/stats", async (req, res) => {
+  try {
+    const [providers, families, requests, assignments] = await Promise.all([
+      prisma.provider.count(),
+      prisma.family.count(),
+      prisma.request.count(),
+      prisma.assignment.count()
+    ]);
+
+    res.json({ providers, families, requests, assignments });
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
+
+
 // Start server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

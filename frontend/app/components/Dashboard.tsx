@@ -12,21 +12,19 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    // Fetch basic stats for dashboard
-    Promise.all([
-      fetch("http://localhost:4000/providers").then(res => res.json()),
-      fetch("http://localhost:4000/requests").then(res => res.json()),
-      fetch("http://localhost:4000/assignments").then(res => res.json()),
-      fetch("http://localhost:4000/families").then(res => res.json())
-    ]).then(([providers, requests, assignments, families]) => {
+  fetch("http://localhost:4000/stats")
+    .then(res => res.json())
+    .then(data => {
       setStats({
-        providers: providers.length,
-        requests: requests.length,
-        assignments: assignments.length,
-        families: families.length
+        providers: data.providers,
+        families: data.families,
+        requests: data.requests,
+        assignments: data.assignments
       });
-    });
-  }, []);
+    })
+    .catch(err => console.error("Error fetching stats:", err));
+}, []);
+
 
   return (
     <div className="p-8 bg-gray-900 min-h-screen">

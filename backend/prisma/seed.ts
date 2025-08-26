@@ -3,140 +3,79 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  // Clear existing data
+  // Clear old data in the correct order (respecting relations)
   await prisma.assignment.deleteMany();
   await prisma.request.deleteMany();
-  await prisma.family.deleteMany();
   await prisma.provider.deleteMany();
+  await prisma.family.deleteMany();
 
-  // Providers
-  const alice = await prisma.provider.create({
-    data: {
-      name: "Alice Johnson",
-      specialty: "Doula",
-      availability: { 
-        monday: ["9-17"], 
-        tuesday: ["12-20"], 
-        wednesday: ["9-17"],
-        thursday: ["12-20"],
-        friday: ["9-17"]
-      }
+  // Seed Families
+  await prisma.family.createMany({
+    data: [
+      { name: "Williams Family", consistency: true },
+      { name: "Nguyen Family", consistency: false },
+    ],
+  });
+
+  // Data pools for randomization
+  const firstNames = [
+    "Alice", "Bob", "Carol", "David", "Emma", "Frank", "Grace", "Henry", "Ivy", "Jack",
+    "Liam", "Mia", "Noah", "Olivia", "Sophia", "Ethan", "Isabella", "Mason", "Ava", "Logan"
+  ];
+  const lastNames = [
+    "Johnson", "Smith", "Davis", "Wilson", "Rodriguez", "Thompson", "Brown", "Taylor",
+    "Anderson", "Clark", "Martinez", "Lopez", "Harris", "Young", "King", "Scott"
+  ];
+  const specialties = [
+    "Doula",
+    "Lactation Consultant",
+    "Postpartum Nurse",
+    "Overnight Newborn Care",
+    "Neonatal Nurse"
+  ];
+
+  // Helper: random availability generator
+  function randomAvailability() {
+  const days = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+  const availability: Record<string, string[]> = {};
+  const guaranteedDay = days[Math.floor(Math.random() * days.length)];
+  const start = Math.floor(Math.random() * 12 + 6);  // 6–18
+  const end = start + Math.floor(Math.random() * 6 + 4); // 4–10 hr shifts
+  availability[guaranteedDay] = [`${start}-${end}`];
+
+  // Randomly add more days
+  days.forEach(day => {
+    if (day !== guaranteedDay && Math.random() > 0.5) {
+      const s = Math.floor(Math.random() * 12 + 6);
+      const e = s + Math.floor(Math.random() * 6 + 4);
+      availability[day] = [`${s}-${e}`];
     }
   });
 
-  const bob = await prisma.provider.create({
-    data: {
-      name: "Bob Smith",
-      specialty: "Lactation Consultant",
-      availability: { 
-        monday: ["10-18"], 
-        tuesday: ["8-16"], 
-        wednesday: ["10-18"], 
-        thursday: ["8-16"],
-        friday: ["10-18"]
-      }
-    }
+  return availability;
+}
+
+
+  // Generate 50 providers
+  const providers = Array.from({ length: 50 }).map((_, i) => {
+    const first = firstNames[i % firstNames.length];
+    const last = lastNames[Math.floor(Math.random() * lastNames.length)];
+    return {
+      name: `${first} ${last}`,
+      specialty: specialties[Math.floor(Math.random() * specialties.length)],
+      availability: randomAvailability(),
+    };
   });
 
-  const carol = await prisma.provider.create({
-    data: {
-      name: "Carol Davis",
-      specialty: "Overnight Newborn Care",
-      availability: { 
-        monday: ["20-8"], 
-        tuesday: ["20-8"], 
-        wednesday: ["20-8"], 
-        thursday: ["20-8"],
-        friday: ["20-8"],
-        saturday: ["20-8"],
-        sunday: ["20-8"]
-      }
-    }
-  });
+  await prisma.provider.createMany({ data: providers });
 
-  const david = await prisma.provider.create({
-    data: {
-      name: "David Wilson",
-      specialty: "Postpartum Nurse",
-      availability: { 
-        monday: ["8-16"], 
-        tuesday: ["16-24"], 
-        wednesday: ["8-16"], 
-        thursday: ["16-24"],
-        friday: ["8-16"]
-      }
-    }
-  });
-
-  const emma = await prisma.provider.create({
-    data: {
-      name: "Emma Rodriguez",
-      specialty: "Doula",
-      availability: { 
-        monday: ["10-18"], 
-        tuesday: ["9-17"], 
-        wednesday: ["10-18"], 
-        thursday: ["9-17"],
-        friday: ["10-18"],
-        saturday: ["9-17"]
-      }
-    }
-  });
-
-  const frank = await prisma.provider.create({
-    data: {
-      name: "Frank Thompson",
-      specialty: "Neonatal Nurse",
-      availability: { 
-        monday: ["7-15"], 
-        tuesday: ["15-23"], 
-        wednesday: ["7-15"], 
-        thursday: ["15-23"],
-        friday: ["7-15"],
-        saturday: ["9-17"],
-        sunday: ["9-17"]
-      }
-    }
-  });
-
-  // Families
-  const family1 = await prisma.family.create({
-    data: {
-      name: "Williams Family",
-      consistency: true
-    }
-  });
-
-  const family2 = await prisma.family.create({
-    data: {
-      name: "Nguyen Family",
-      consistency: false
-    }
-  });
-
-  const family3 = await prisma.family.create({
-    data: {
-      name: "Martinez Family",
-      consistency: true
-    }
-  });
-
-  const family4 = await prisma.family.create({
-    data: {
-      name: "Johnson Family",
-      consistency: false
-    }
-  });
-
-  console.log("Seed data created successfully!");
-  console.log("Providers:", [alice.name, bob.name, carol.name, david.name, emma.name, frank.name]);
-  console.log("Families:", [family1.name, family2.name, family3.name, family4.name]);
+  console.log("Database reset and seeded with 2 families + 50 providers!");
 }
 
 main()
   .then(() => prisma.$disconnect())
-  .catch(async (e) => {
+  .catch(e => {
     console.error(e);
-    await prisma.$disconnect();
+    prisma.$disconnect();
     process.exit(1);
   });

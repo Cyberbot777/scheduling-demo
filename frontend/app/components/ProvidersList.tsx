@@ -12,7 +12,7 @@ export default function ProvidersList() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`http://localhost:4000/providers?page=${page}&limit=3`)
+    fetch(`http://localhost:4000/providers?page=${page}&limit=9`)
       .then(res => res.json())
       .then(data => {
         setProviders(data.data);
