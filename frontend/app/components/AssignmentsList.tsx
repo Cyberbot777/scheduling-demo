@@ -72,7 +72,7 @@ export default function AssignmentsList() {
       fetch("http://localhost:4000/providers").then(res => res.json())
     ]).then(([assignmentsData, providersData]) => {
       setAssignments(assignmentsData);
-      setProviders(providersData);
+      setProviders(providersData.data || providersData); // Handle both paginated and non-paginated responses
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);

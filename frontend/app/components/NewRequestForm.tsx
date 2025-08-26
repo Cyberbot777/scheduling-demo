@@ -23,7 +23,7 @@ export default function NewRequestForm() {
       fetch("http://localhost:4000/providers").then(res => res.json())
     ]).then(([familiesData, providersData]) => {
       setFamilies(familiesData);
-      setProviders(providersData);
+      setProviders(providersData.data || providersData); // Handle both paginated and non-paginated responses
     });
   }, []);
 

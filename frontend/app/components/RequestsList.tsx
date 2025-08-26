@@ -26,7 +26,7 @@ export default function RequestsList() {
       fetch("http://localhost:4000/families").then(res => res.json())
     ]).then(([requestsData, providersData, familiesData]) => {
       setRequests(requestsData);
-      setProviders(providersData);
+      setProviders(providersData.data || providersData); // Handle both paginated and non-paginated responses
       setFamilies(familiesData);
       setLoading(false);
     }).catch(() => setLoading(false));
