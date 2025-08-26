@@ -19,6 +19,9 @@ services:
   frontend:
     build:
       context: ./frontend
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
     ports:
       - '3000:3000'
     depends_on:
@@ -30,6 +33,9 @@ services:
   backend:
     build:
       context: ./backend
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
     ports:
       - '4000:4000'
     depends_on:

@@ -16,11 +16,31 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Get all providers
+// Get providers with pagination
 app.get("/providers", async (req, res) => {
-  const providers = await prisma.provider.findMany();
-  res.json(providers);
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
+
+  const [providers, total] = await Promise.all([
+    prisma.provider.findMany({
+      skip,
+      take: limit,
+    }),
+    prisma.provider.count(),
+  ]);
+
+  res.json({
+    data: providers,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
 });
+
 
 // Get all families
 app.get("/families", async (req, res) => {
@@ -31,7 +51,7 @@ app.get("/families", async (req, res) => {
 // Start server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`🚀 API running on http://localhost:${PORT}`);
+  console.log(`API running on http://localhost:${PORT}`);
 });
 
 // Create a new care request
@@ -325,7 +345,7 @@ app.put("/assignments/:id", async (req, res) => {
     // Check for scheduling conflicts with the new provider
     const conflictingAssignment = await prisma.assignment.findFirst({
       where: {
-        id: { not: parseInt(id) }, // Exclude current assignment
+        id: { not: parseInt(id) }, 
         providerId,
         request: {
           OR: [
