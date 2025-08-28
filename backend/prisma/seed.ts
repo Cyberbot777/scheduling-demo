@@ -21,10 +21,10 @@ async function main() {
     "Anderson", "Clark", "Martinez", "Lopez", "Harris", "Young", "King", "Scott"
   ];
 
-  // Seed 100 Families (mix of consistency preferences)
-  const familiesData = Array.from({ length: 100 }).map((_, i) => ({
-    name: `${lastNames[i % lastNames.length]} Family ${Math.floor(i / lastNames.length) + 1}`,
-    consistency: i % 2 === 0 // alternate true/false for a balanced mix
+  // Seed 10 Families (mix of consistency preferences)
+  const familiesData = Array.from({ length: 10 }).map((_, i) => ({
+    name: `${lastNames[i]} Family`,
+    consistency: i < 5 // first 5 prefer consistency, next 5 do not
   }));
   await prisma.family.createMany({ data: familiesData });
   const specialties = [
@@ -70,7 +70,7 @@ async function main() {
 
   await prisma.provider.createMany({ data: providers });
 
-  console.log("Database reset and seeded with 100 families + 50 providers!");
+  console.log("Database reset and seeded with 10 families + 50 providers!");
 }
 
 main()

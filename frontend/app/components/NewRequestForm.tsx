@@ -20,7 +20,8 @@ export default function NewRequestForm() {
     // Fetch families and providers for the form
     Promise.all([
       fetch("http://localhost:4000/families").then(res => res.json()),
-      fetch("http://localhost:4000/providers").then(res => res.json())
+      // Fetch a large page so we can resolve names for AI suggestions reliably
+      fetch("http://localhost:4000/providers?limit=1000").then(res => res.json())
     ]).then(([familiesData, providersData]) => {
       setFamilies(familiesData);
       setProviders(providersData.data || providersData); // Handle both paginated and non-paginated responses
@@ -91,6 +92,8 @@ export default function NewRequestForm() {
           setAiSuggestion({
             requestId: response.requestId,
             providerId: response.suggestedProvider.providerId,
+            // keep name if model supplied it so UI can show without lookup
+            name: response.suggestedProvider.name,
             reasoning: response.suggestedProvider.reasoning
           });
         }
@@ -155,7 +158,7 @@ export default function NewRequestForm() {
                   required
                 >
                   <option value="">Select a family...</option>
-                  {families.map(family => (
+                  {families.map((family:any) => (
                     <option key={family.id} value={family.id}>
                       {family.name} {family.consistency && "(Prefers consistency)"}
                     </option>
@@ -232,7 +235,7 @@ export default function NewRequestForm() {
                     Recommended Provider
                   </h3>
                   <p className="text-white font-medium">
-                    {providers.find(p => p.id === aiSuggestion.providerId)?.name || "Provider not found"}
+                    {aiSuggestion.name || providers.find(p => p.id === aiSuggestion.providerId)?.name || "Provider not found"}
                   </p>
                   <p className="text-gray-400 text-sm">
                     {providers.find(p => p.id === aiSuggestion.providerId)?.specialty || ""}
