@@ -51,11 +51,16 @@ Access
 
 ## UI Screenshots
 
-> Place PNGs in `frontend/public/screenshots/` with the names below to render them on GitHub.
-
-![Create New Care Request](frontend/public/create-request.png)
+### Dashboard
 ![Dashboard](frontend/public/dashboard.png)
+
+### Create New Care Request
+![Create New Care Request](frontend/public/create-request.png)
+
+### Provider Assignments
 ![Assignments](frontend/public/assignments.png)
+
+### Select a Provider
 ![Select Provider](frontend/public/select-provider.png)
 
 ---
