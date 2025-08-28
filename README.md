@@ -1,20 +1,18 @@
-# YuziCare Scheduler
+# Healthcare Scheduling System (Demo)
 
-A comprehensive AI-driven scheduling system for healthcare providers and families, built to solve real-world scheduling challenges in the healthcare industry.
+A full-stack demo showcasing an AI-assisted scheduling workflow for providers and families. It includes complete CRUD, conflict-aware assignments, and an optional GPT-powered recommendation flow.
 
 **Tech Stack**: Next.js 15 (Frontend), Node.js/Express (Backend), PostgreSQL (Database), Prisma (ORM), OpenAI GPT (AI Integration), Docker (Containerization)
 
 ---
 
-## Problem Statement
+## Overview
 
-YuziCare, a growing healthcare startup, was experiencing critical scheduling failures:
-- 3-hour emergency response times for urgent care requests
-- Double-booking of providers due to manual scheduling
-- Inconsistent care delivery for families who specifically requested provider consistency
-- Complete breakdown of manual scheduling processes
-
-This system provides a complete solution to these challenges through intelligent automation, conflict prevention, and AI-powered provider matching.
+This demo focuses on core scheduling capabilities:
+- End-to-end CRUD for requests, providers, families, and assignments
+- Conflict detection to prevent double-booking
+- Optional AI suggestion to recommend a suitable provider
+- Clean, componentized frontend with a straightforward UX
 
 ---
 
@@ -42,7 +40,7 @@ This system provides a complete solution to these challenges through intelligent
 - **Read**: View family profiles with consistency preferences
 - **Consistency Logic**: Track and respect family preferences for provider consistency
 
-### AI-Powered Scheduling
+### AI-Powered Scheduling (Optional)
 
 **Intelligent Provider Recommendations**
 - OpenAI GPT integration for smart provider matching
@@ -148,8 +146,8 @@ POST   /ai-suggest                - AI provider recommendation
 
 1. **Clone Repository**
 ```bash
-git clone https://github.com/Cyberbot777/yuzicare-scheduler.git
-cd yuzicare-scheduler
+git clone https://github.com/Cyberbot777/healthcare-scheduler.git
+cd healthcare-scheduler
 ```
 
 2. **Environment Configuration**
@@ -296,7 +294,7 @@ curl -X PUT http://localhost:4000/assignments/1 \
 ## Project Structure
 
 ```
-yuzicare-scheduler/
+healthcare-scheduler/
 ├── backend/
 │   ├── prisma/
 │   │   ├── schema.prisma
@@ -358,4 +356,4 @@ yuzicare-scheduler/
 **Richard Hall**  
 Full-Stack Engineer with expertise in modern web technologies, AI integration, and scalable system design.
 
-Built for YuziCare as a demonstration of production-ready scheduling system development. 
+Built as a neutral demo of production-ready scheduling system development.
