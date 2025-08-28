@@ -53,10 +53,10 @@ Access
 
 > Place PNGs in `frontend/public/screenshots/` with the names below to render them on GitHub.
 
-![Create New Care Request](frontend/public/screenshots/create-request.png)
-![Dashboard](frontend/public/screenshots/dashboard.png)
-![Assignments](frontend/public/screenshots/assignments.png)
-![Select Provider](frontend/public/screenshots/select-provider.png)
+![Create New Care Request](frontend/public/create-request.png)
+![Dashboard](frontend/public/dashboard.png)
+![Assignments](frontend/public/assignments.png)
+![Select Provider](frontend/public/select-provider.png)
 
 ---
 
