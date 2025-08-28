@@ -8,7 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model Provider {
   id           Int          @id @default(autoincrement())
   name         String
@@ -20,7 +19,7 @@ model Provider {
 model Family {
   id          Int        @id @default(autoincrement())
   name        String
-  consistency Boolean    // true = prefers same provider
+  consistency Boolean
   requests    Request[]
 }
 

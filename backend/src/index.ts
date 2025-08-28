@@ -16,30 +16,101 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Get providers with pagination
+// Get providers with pagination + filter + search + sort
 app.get("/providers", async (req, res) => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
   const skip = (page - 1) * limit;
 
-  const [providers, total] = await Promise.all([
-    prisma.provider.findMany({
-      skip,
-      take: limit,
-    }),
-    prisma.provider.count(),
+  const specialty = req.query.specialty as string | undefined;
+  const day = req.query.day as string | undefined;
+  const time = req.query.time ? parseInt(req.query.time as string) : undefined;
+  const search = req.query.search as string | undefined;
+  const sortBy = req.query.sortBy as string || "name";
+  const sortOrder = req.query.sortOrder as "asc" | "desc" || "asc";
+
+  const where: any = {};
+  if (specialty) {
+    where.specialty = {
+      contains: specialty,
+      mode: "insensitive"
+    };
+  }
+
+  if (search) {
+    where.OR = [
+      {
+        name: {
+          contains: search,
+          mode: "insensitive"
+        }
+      },
+      {
+        specialty: {
+          contains: search,
+          mode: "insensitive"
+        }
+      }
+    ];
+  }
+
+  // fetch all candidates from DB (still paginated later)
+  const [allProviders, total] = await Promise.all([
+    prisma.provider.findMany({ where }),
+    prisma.provider.count({ where }),
   ]);
 
+  // Step 2: apply availability filtering in Node
+  let filteredProviders = allProviders;
+  if (day && time !== undefined) {
+    filteredProviders = allProviders.filter(p => {
+      const slots = p.availability?.[day.toLowerCase()];
+      if (!slots) return false;
+      
+      // slots look like ["9-17"], parse them
+      return slots.some((slot: string) => {
+        const [start, end] = slot.split("-").map(Number);
+        // handle overnight (e.g., 20-8)
+        if (end < start) {
+          return time >= start || time <= end;
+        }
+        return time >= start && time <= end;
+      });
+    });
+  }
+
+  // Step 3: apply sorting
+  filteredProviders.sort((a, b) => {
+    let aValue = a[sortBy as keyof typeof a];
+    let bValue = b[sortBy as keyof typeof b];
+    
+    // Handle string comparison
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+    
+    if (sortOrder === 'asc') {
+      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+    } else {
+      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+    }
+  });
+
+  // Step 4: paginate
+  const paginated = filteredProviders.slice(skip, skip + limit);
+
   res.json({
-    data: providers,
+    data: paginated,
     pagination: {
-      total,
+      total: filteredProviders.length,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(filteredProviders.length / limit),
     },
   });
 });
+
 
 
 // Get all families
