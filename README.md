@@ -1,4 +1,4 @@
-# Healthcare Scheduling System (Demo)
+# Healthcare Scheduling System
 
 A full-stack demo showcasing an AI-assisted scheduling workflow for providers and families. It includes complete CRUD, conflict-aware assignments, and an optional GPT-powered recommendation flow.
 
@@ -40,7 +40,7 @@ This demo focuses on core scheduling capabilities:
 - **Read**: View family profiles with consistency preferences
 - **Consistency Logic**: Track and respect family preferences for provider consistency
 
-### AI-Powered Scheduling (Optional)
+### AI-Powered Scheduling
 
 **Intelligent Provider Recommendations**
 - OpenAI GPT integration for smart provider matching
