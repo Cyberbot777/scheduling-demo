@@ -6,11 +6,8 @@ import { Trash2, UserPlus, Edit3 } from "lucide-react";
 
 export default function RequestsList() {
   const [requests, setRequests] = useState<any[]>([]);
-  const [providers, setProviders] = useState<any[]>([]);
   const [families, setFamilies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAssignModal, setShowAssignModal] = useState<number | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState("");
   const [showEditModal, setShowEditModal] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({
     careType: "",
@@ -22,11 +19,9 @@ export default function RequestsList() {
   useEffect(() => {
     Promise.all([
       fetch("http://localhost:4000/requests").then(res => res.json()),
-      fetch("http://localhost:4000/providers").then(res => res.json()),
       fetch("http://localhost:4000/families").then(res => res.json())
-    ]).then(([requestsData, providersData, familiesData]) => {
+    ]).then(([requestsData, familiesData]) => {
       setRequests(requestsData);
-      setProviders(providersData.data || providersData); // Handle both paginated and non-paginated responses
       setFamilies(familiesData);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -51,37 +46,7 @@ export default function RequestsList() {
     }
   };
 
-  const assignProvider = async (requestId: number) => {
-    if (!selectedProvider) {
-      alert("Please select a provider");
-      return;
-    }
-    
-    try {
-      const response = await fetch(`http://localhost:4000/requests/${requestId}/assign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerId: parseInt(selectedProvider) })
-      });
-      
-      if (response.ok) {
-        const assignment = await response.json();
-        setRequests(requests.map(r => 
-          r.id === requestId 
-            ? { ...r, assignment: assignment }
-            : r
-        ));
-        setShowAssignModal(null);
-        setSelectedProvider("");
-        alert("Provider assigned successfully!");
-      } else {
-        const error = await response.json();
-        alert(`Failed to assign provider: ${error.error}`);
-      }
-    } catch (error) {
-      alert("Error assigning provider");
-    }
-  };
+
 
   const openEditModal = (request: any) => {
     setEditForm({
@@ -230,56 +195,20 @@ export default function RequestsList() {
 
                              <div className="mt-4 flex gap-2">
                  {!request.assignment && (
-                   <button
-                     onClick={() => setShowAssignModal(request.id)}
-                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm transition-colors flex items-center gap-1"
+                   <a
+                     href={`/providers?requestId=${request.id}&mode=assign`}
+                     className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors flex items-center gap-1"
                    >
                      <UserPlus size={16} />
                      Assign Provider
-                   </button>
+                   </a>
                  )}
                </div>
             </motion.div>
           ))}
         </div>
 
-        {/* Assignment Modal */}
-        {showAssignModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-xl max-w-md w-full mx-4">
-              <h3 className="text-xl font-semibold text-white mb-4">Assign Provider</h3>
-              <select
-                value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value)}
-                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
-              >
-                <option value="">Select a provider...</option>
-                {providers.map(provider => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.name} ({provider.specialty})
-                  </option>
-                ))}
-              </select>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => assignProvider(showAssignModal)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"
-                >
-                  Assign
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAssignModal(null);
-                    setSelectedProvider("");
-                  }}
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Edit Modal */}
         {showEditModal && (

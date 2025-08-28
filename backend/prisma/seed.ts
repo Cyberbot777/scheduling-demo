@@ -9,13 +9,7 @@ async function main() {
   await prisma.provider.deleteMany();
   await prisma.family.deleteMany();
 
-  // Seed Families
-  await prisma.family.createMany({
-    data: [
-      { name: "Williams Family", consistency: true },
-      { name: "Nguyen Family", consistency: false },
-    ],
-  });
+  // Families will be created after we define last names so we can generate varied names
 
   // Data pools for randomization
   const firstNames = [
@@ -26,6 +20,13 @@ async function main() {
     "Johnson", "Smith", "Davis", "Wilson", "Rodriguez", "Thompson", "Brown", "Taylor",
     "Anderson", "Clark", "Martinez", "Lopez", "Harris", "Young", "King", "Scott"
   ];
+
+  // Seed 100 Families (mix of consistency preferences)
+  const familiesData = Array.from({ length: 100 }).map((_, i) => ({
+    name: `${lastNames[i % lastNames.length]} Family ${Math.floor(i / lastNames.length) + 1}`,
+    consistency: i % 2 === 0 // alternate true/false for a balanced mix
+  }));
+  await prisma.family.createMany({ data: familiesData });
   const specialties = [
     "Doula",
     "Lactation Consultant",
@@ -69,7 +70,7 @@ async function main() {
 
   await prisma.provider.createMany({ data: providers });
 
-  console.log("Database reset and seeded with 2 families + 50 providers!");
+  console.log("Database reset and seeded with 100 families + 50 providers!");
 }
 
 main()

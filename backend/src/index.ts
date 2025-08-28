@@ -62,20 +62,65 @@ app.get("/providers", async (req, res) => {
 
   // Step 2: apply availability filtering in Node
   let filteredProviders = allProviders;
-  if (day && time !== undefined) {
-    filteredProviders = allProviders.filter(p => {
-      const slots = p.availability?.[day.toLowerCase()];
-      if (!slots) return false;
+  
+  // Helper: check if a given hour is inside a time slot (supports overnight and >24 ends)
+  const isHourInSlot = (hour: number, timeSlot: string): boolean => {
+    const parts = timeSlot.split("-");
+    if (parts.length !== 2) return false;
+    const rawStart = Number(parts[0]);
+    const rawEnd = Number(parts[1]);
+    if (!Number.isFinite(rawStart) || !Number.isFinite(rawEnd)) return false;
+
+    // Normalize into 0-23 clock; keep original end to detect explicit next-day ranges (>=24)
+    let start = ((rawStart % 24) + 24) % 24;
+    let endNorm = ((rawEnd % 24) + 24) % 24;
+    const isOvernight = rawEnd >= 24 || endNorm < start;
+
+    if (isOvernight) {
+      // Range wraps across midnight, e.g., 20-2 or 17-25 (→ 17-1)
+      return hour >= start || hour <= endNorm;
+    }
+    return hour >= start && hour <= endNorm;
+  };
+
+  // Filter by day
+  if (day) {
+    filteredProviders = filteredProviders.filter(p => {
+      // Check if provider has availability for the requested day
+      const dayAvailability = p.availability?.[day.toLowerCase()];
       
-      // slots look like ["9-17"], parse them
-      return slots.some((slot: string) => {
-        const [start, end] = slot.split("-").map(Number);
-        // handle overnight (e.g., 20-8)
-        if (end < start) {
-          return time >= start || time <= end;
+      // If no availability for this day, exclude the provider
+      if (!dayAvailability || !Array.isArray(dayAvailability) || dayAvailability.length === 0) {
+        return false;
+      }
+      
+      return true;
+    });
+  }
+
+  // Filter by time (independent of day filter)
+  if (time !== undefined) {
+    filteredProviders = filteredProviders.filter(p => {
+      // If day filter was applied, only check the specific day's availability
+      if (day) {
+        const dayAvailability = p.availability?.[day.toLowerCase()];
+        if (!dayAvailability || !Array.isArray(dayAvailability)) {
+          return false;
         }
-        return time >= start && time <= end;
-      });
+        return dayAvailability.some((timeSlot: string) => isHourInSlot(time, timeSlot));
+      } else {
+        // If no day filter, check all days for the specified time
+        const availability = p.availability;
+        if (!availability || typeof availability !== 'object') {
+          return false;
+        }
+        
+        // Check if the provider is available at the specified time on ANY day
+        return Object.values(availability).some((daySlots: any) => {
+          if (!Array.isArray(daySlots)) return false;
+          return daySlots.some((timeSlot: string) => isHourInSlot(time, timeSlot));
+        });
+      }
     });
   }
 
