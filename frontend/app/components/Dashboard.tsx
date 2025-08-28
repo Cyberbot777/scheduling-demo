@@ -34,7 +34,7 @@ export default function Dashboard() {
         className="max-w-6xl mx-auto"
       >
         <h1 className="text-4xl font-bold text-white mb-2">
-          YuziCare Scheduler
+          Healthcare Scheduling System
         </h1>
         <p className="text-gray-400 mb-8">
           AI-driven healthcare provider scheduling system
